@@ -1,0 +1,375 @@
+<html>
+	<style>
+		body{
+			background-color: #8083f1;
+			font-family: courier;
+			padding: 1em;
+			padding-left: 2em;
+		}
+		#info{
+			padding:.5em;
+		}
+		input{
+			width:6em;
+		}
+		table{
+			border-collapse:collapse;
+			
+		}
+		td{
+			width:6px;
+			height:6px;
+			border:solid 1px black;
+		}
+		.alive{
+			background-color: red;
+		}
+		.dead{
+			background-color: black;
+		}
+		article{
+			margin-bottom:.5em;
+		}
+	</style>
+<body>
+	<h2>Conway's Game of Life</h2>
+	<section id='info'>
+		<article>
+			<span class='input'><b>City Width:</b>&nbsp;<input id='width' type="number" name="quantity" min="4" max="800" value='100'></span>
+			<span class='input'><b>City Height:</b>&nbsp;<input id='height' type="number" name="quantity" min="4" max="800" value='100'></span>
+			<input id='resize' type="button" value="RESIZE">
+
+		</article>
+		<article>
+			<span class='input'><b>Delay</b>:&nbsp;<input id='speed' type="number" name="quantity" min="0" max="10000" step="100" value='500'></span>
+			<span class='input'><b>Cell Size:</b>&nbsp;<input id='size' type="number" name="quantity" min="0" max="10" value=6></span>
+		</article>
+		<article>
+			<span class='input'><b>Patterns</b>:&nbsp;
+				<input type='button' id="random" value='Randomize' />
+				<input type='button' id="hourglass" value='Hourglass' />
+				<input type='button' id="lined" value='Lined' />
+				<input type='button' id="clear" value='Clear' />
+			</span>
+		</article>
+		<article>
+			<span class='input'><b>Generation</b>:&nbsp;<input id='generations' value='0'></span>
+			<span class='input'><b>Living Cells:</b>&nbsp;<input id='living' value='0'></span>
+		</article>
+		<article>
+			<input id='go' type="button" value="START">
+			<input id='initial' type="button" value="INITIAL">
+		</article>
+	</section>
+	
+	<article id='insertion_point'></article>
+	
+</body>
+<script>
+//-----------  GET DOCUMENT OBJECT REFERENCES; prefixed with o_ -----
+	var o_City = document.getElementById('city');
+	var o_Width = document.getElementById('width');
+	var o_Height = document.getElementById('height');
+	var o_Speed = document.getElementById('speed');
+	var o_Size = document.getElementById('size');
+	var o_Random_Pattern = document.getElementById('random');
+	var o_Hourglass_Pattern = document.getElementById('hourglass');
+	var o_Lined_Pattern = document.getElementById('lined');
+	var o_Clear_Pattern = document.getElementById('clear');
+	var o_Generation = document.getElementById('generations');
+	var o_Living = document.getElementById('living');
+	var o_Resize = document.getElementById('resize');
+	var o_Go = document.getElementById('go');
+	var o_Initial = document.getElementById('initial');
+//------------------------------------------------------------
+//------  EVENT LISTENERS/X-BROWSER FUNCTION  --------------------
+addEvent(window,'load',setupGame);
+addEvent(o_Resize,'click',setupGame);
+addEvent(o_Random_Pattern,'click',makeRandom);
+addEvent(o_Hourglass_Pattern,'click',makeHourglass);
+addEvent(o_Lined_Pattern,'click',makeLined);
+addEvent(o_Clear_Pattern,'click',makeClear);
+addEvent(o_Initial,'click',initialPattern);
+addEvent(o_Go,'click',conwayCaller);
+addEvent(o_Size,'input',cellSize);
+
+function addEvent(elem,evtType,func){if(elem.addEventListener){elem.addEventListener(evtType,func,false);}else if(elem.attachEvent){elem.attachEvent("on"+evtType,func);}else{elem["on"+evtType]=func;}}
+//---------------------------------------------
+//-------------  GET INTIAL GLOBAL VARIABLES  ---------------
+	var city_width = parseInt(o_Width.value);
+	var city_height = parseInt(o_Height.value);
+	var game_speed = parseInt(o_Speed.value);
+	var a_TD,o_Table,a_Cells,timer,generation;
+	var d_Initial_State = {};
+	var DIRECTION_NAMES = ['north','north_east','east','south_east','south','south_west','west','north_west'];
+//------------------------------------------------------------
+function conwayCaller(){
+	/*
+		handler for starting and stopping Game
+		and saving initial state of 'city'
+							*/
+	if( generation == 0 ){	//---if initial generation, save 'city' and call conwayGame
+
+		var cell_states = new Array();
+		for(var i = 0;i < a_TD.length;i++){
+			if( a_TD[i].className == 'alive' )
+				cell_states.push(i);
+		}
+		d_Initial_State['array'] = cell_states;
+		d_Initial_State['width'] = parseInt(o_Width.value);
+		d_Initial_State['height'] = parseInt(o_Height.value);
+		o_Go.value = 'STOP';
+		timer = true;
+		conwayGame();
+	}						
+	else if( timer ){	//---if running already, set timer to false so setTimeout in conwayGame isn't called
+		timer = false;
+		o_Go.value = 'START';
+	}
+	else if( !timer ){	//--- else it is stopped and needs restarted
+		timer = true;
+		o_Go.value = 'STOP';
+		conwayGame();	
+	}
+}
+
+function initialPattern(){
+	for(var i = 0;i < d_Initial_State['array'].length;i++){
+		a_TD[d_Initial_State['array'][i]].className = 'alive';
+	}
+}
+function conwayGame(){
+	if( timer ){
+		var neighbor_count,current_cell,current_neighbors;
+		var a_Next_Gen = [];
+		var living = 0;
+		for(var row = 0;row < city_height;row++){
+			for(var col = 0;col < city_width;col++){
+				current_cell = a_Cells[row][col]['td'];
+				current_neighbors = a_Cells[row][col]['neighbors'];
+				neighbor_count = 0;
+				for(var direction = 0;direction < DIRECTION_NAMES.length;direction++){
+					if( current_neighbors[DIRECTION_NAMES[direction]].className == 'alive' )
+						neighbor_count++;
+				}
+				if( neighbor_count == 3  || ( neighbor_count == 2 && current_cell.className == 'alive' ) )
+					a_Next_Gen.push(true)
+				else
+					a_Next_Gen.push(false);
+			}
+		}
+		generation++;
+		for(var i = 0; i < a_Next_Gen.length; i++){
+			if(a_Next_Gen[i]){
+				a_TD[i].className = 'alive';
+				living++;
+			}
+			else{
+				a_TD[i].className = 'dead';
+			}
+		}
+		o_Generation.value = generation;
+		o_Living.value = living;
+		timer = setTimeout(conwayGame,parseInt(o_Speed.value));
+	}
+}
+function setupGame(){
+	/* 
+		FUNCTION TO SET UP THE INITIAL GAME;
+		CALLED ON WINDOW-LOAD OR WHEN USER PRESSES 'RESIZE' BUTTON;
+		DYNAMICALLY BUILDS <TABLE> BASED ON INPUT VALUES.
+	*/
+	timer = false;
+	generation = 0;
+	o_Generation.value = generation;
+	o_Living.value = 0;
+	var cell,temp,neighbors,up,right,down,left;;
+	var index = 0;
+	o_Table = document.getElementById('insertion_point');
+	a_Cells = new Array();
+	city_width = parseInt(o_Width.value);
+	city_height = parseInt(o_Height.value);
+	//---  BUILT TABLE_STRING  ----
+	var table_string = "<table id='city'>";
+	for(var h = 0;h < city_height;h++){
+		table_string += "<tr>";
+		for(var w = 0;w < city_width;w++){
+			table_string += "<td class='dead'></td>";
+		}
+		table_string += "</tr>";
+	}
+	table_string += "</table>";
+	//----  INSERT TABLE_STRING VIA DOM METHOD INNERHTML  -----
+		document.getElementById('insertion_point').innerHTML = table_string;
+	/*	
+		GET ARRAY OF ALL TD ELEMENTS IN TABLE AND CONVERT TO  2-D ARRAY a_Cells 
+		WHICH HOLDS DICTIONARY ENTIRES OF ALL TD OBJECTS (HASHED 'td') WITH 
+		POSITIONAL ARRAYS (HASHED 'neighbors') CORRESPONDING TO THAT TD'S NEIGHBORS' INDICES 
+		WITHIN THE 2-D ARRAY a_Cells. WHILE DOM ARRAY (a_TD) IS USED FOR VARIOUS METHODS,
+		THE 2-D ARRAY (a_Cells) IS USED FOR THE PRIMARY FUNCTION CALL (Conway).
+		2-D a_Cells ARRAY IS ESSENTIALLY A TOROIDAL COORDINATE MAPPING
+	*/
+		//--- USE DOM METHOD TO GRAB ALL TD OBJECTS
+		a_TD = document.getElementsByTagName("TD");
+		for(var row = 0;row < city_height;row++){
+			temp = [];
+			for(var col = 0;col < city_width;col++,index++){
+				cell = {};
+				neighbors = {};
+				cell['td'] = a_TD[index];
+				up = row - 1;
+				if(up < 0)
+					up = city_height - 1;
+				right = (col + 1) % city_width;
+				down = (row + 1) % city_height;
+				left = col - 1;
+				if(left < 0)
+					left = city_width - 1;
+				neighbors['north'] = a_TD[up * city_width + col];		//[col,up];
+				neighbors['north_east'] = a_TD[up * city_width + right];	//[right,up];
+				neighbors['east'] = a_TD[row * city_width + right];		//[right,row];
+				neighbors['south_east'] = a_TD[down * city_width + right];	//[right,row];
+				neighbors['south'] = a_TD[down * city_width + col];		//[col,down];
+				neighbors['south_west'] = a_TD[down * city_width + left];	//[left,down];
+				neighbors['west'] = a_TD[row * city_width + left];		//[left,row];
+				neighbors['north_west'] = a_TD[up * city_width + left];		//[left,up];
+
+				cell['neighbors'] = neighbors;
+
+				temp.push(cell);
+			}
+			a_Cells.push(temp);
+		}
+	//-----  ATTACH EVENT-LISTENER TO TABLE FOR CLICKING/DRAGGING-OVER CELLS  -----
+		for(var i = 0;i < a_TD.length;i++){
+			addEvent(a_TD[i],'dragenter',dragClass);
+			addEvent(a_TD[i],'click',changeClass);
+		}
+}
+function setLiveCount(){
+	var count = 0;
+	for(var i = 0;i < a_TD.length;i++){
+		if( a_TD[i].className == 'alive' )
+			count++;
+	}
+	o_Living.value = count;
+}
+function cellSize(){
+	//---   Event handler for when user changes cell size
+	if(this.value > 0 ){
+		for( var i = 0;i < a_TD.length;i++){
+			a_TD[i].style.width = a_TD[i].style.height = this.value;
+			a_TD[i].style.borderWidth = 1;
+		}
+	}
+	else{
+		for( var i = 0;i < a_TD.length;i++){
+			a_TD[i].style.width = a_TD[i].style.height = this.value;
+			a_TD[i].style.borderWidth = 0;
+		}
+	}
+}
+function changeClass(e){
+	//---  Event handler for when user clicks on individual cells ----
+	if( e.target.className == 'dead' ){
+		e.target.className = 'alive';
+		o_Living.value++;
+	}
+	else{
+		e.target.className = 'dead';
+		o_Living.value--;
+	}
+}
+function dragClass(e){
+	if( e.target.className == 'dead' ){
+		e.target.className = 'alive';
+		o_Living.value++;
+	}
+	else{
+		e.target.className = 'dead';
+		o_Living.value--;
+	}
+}
+function makeRandom(){
+	//---  Event handler for random pattern
+	var percentage = parseInt( prompt('What percentage (0-100) of Cells do you want alive?',40) );
+	var rand,temp;
+	if( isNaN(percentage) )
+		return;
+	else if( percentage < 0 )
+		percentage = 0;
+	else if( percentage > 100 )
+		percentage = 100;
+	percentage /= 100;
+	var cells_to_randomize = Math.ceil(a_TD.length * percentage);
+	for(var r = 0; r < cells_to_randomize; r++){
+		a_TD[r].className = 'alive';
+	}
+	for(;r < a_TD.length;r++){
+		a_TD[r].className = 'dead';
+	}
+	for(r = 0; r < a_TD.length; r++){
+		rand = Math.floor( Math.random() * a_TD.length );
+		temp = a_TD[rand].className;
+		a_TD[rand].className = a_TD[r].className;
+		a_TD[r].className = temp;
+	}
+	setLiveCount();
+}
+function makeHourglass(){
+	//---  Event handler for pattern
+	var row_up = col_left = 0;
+	var row_down = city_height - 1;
+	var col_right = city_width - 1;
+	while(row_up <= row_down){
+		for(var c = 0;(c + col_left) <= col_right;c++){
+			a_Cells[row_up][col_left+c]['td'].className = 'alive';
+			a_Cells[row_down][col_left+c]['td'].className = 'alive';
+		}
+		row_up+=2;
+		col_left+=2;
+		row_down-=2;
+		col_right-=2;
+	}
+	setLiveCount();
+}
+function makeLined(){
+	//---  Event handler for pattern
+	var row_up = 0;
+	var col_left = 0;
+	var row_down = city_height - 1;
+	var col_right = city_width - 1;
+	while(row_up <= row_down){
+		for(var c = 0;(c + col_left) <= col_right;c++){
+			a_Cells[row_up][col_left+c]['td'].className = 'alive';
+			a_Cells[row_down][col_left+c]['td'].className = 'alive';
+		}
+		row_up+=2;
+		col_left+=2;
+		row_down-=2;
+		col_right-=2;
+	}
+	row_up = col_left = 0;
+	row_down = city_height - 1;
+	col_right = city_width - 1;
+	while(col_left <= col_right){
+		for(var r = 0;(r + row_up) <= row_down;r++){
+			a_Cells[row_up+r][col_left]['td'].className = 'alive';
+			a_Cells[row_down-r][col_right]['td'].className = 'alive';
+		}
+		row_up+=2;
+		col_left+=2;
+		row_down-=2;
+		col_right-=2;
+	}
+	setLiveCount();
+}
+function makeClear(){
+	timer = null;
+	for(var i = 0;i < a_TD.length;i++)
+		a_TD[i].className = 'dead';
+	o_Generation.value = 0;
+	o_Living.value = 0;
+}
+</script>
+</html>
