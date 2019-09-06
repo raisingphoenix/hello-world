@@ -1,0 +1,25 @@
+﻿body{
+	margin: 15px auto;
+	font-family: Arial, "MS Trebuchet", sans-serif;
+	background-color: #8080ff;
+	padding-left:1em;
+	color: white;
+
+}
+canvas{
+	background-color: #36a;
+	margin:5px;
+	border-style: inset;
+	border-width: 6px;
+}
+h2{
+
+	text-align: center;
+	font-family: "Times New Roman", Georgia, Serif;
+	color: #ffff00;
+}
+#redraw_area{
+	border:solid 1px black;
+	padding: 1em;
+	width: 96%;
+}

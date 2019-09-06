@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+	<title>Mandelelbar</title>
+ 	<meta charset="UTF-8">
+	<link rel="stylesheet" href="mandelbrot_layout.css">
+</head>
+<body>
+	<header><h2>Mandelbar Fractals</h2></header>
+		<p>CLICK ON FRACTAL TO ZOOM IN OR CLICK ON BUTTON</br>BELOW TO REDRAW ACCORDING TO VALUES</p>
+	<section>
+		<canvas id="canvas" width='' height=''></canvas>
+	</section>
+	<p>X-Coordinate: <input type='text' id='coorX'/> Y-Coordinate: <input type='text' id='coorY'/></p>
+	<p>X-Offset: <input type='text' id='offX'/> Y-Offset: <input type='text' id='offY'/></p>
+	<p>Zoom: <input type='text' id='zoom'/></p>
+	<article id='redraw_area'>
+		<p>
+		<span>Mandelbar To Draw&nbsp;:&nbsp;</span>
+			<select id='mandelbar_selected' name='mandelbar'>
+				<option value='second'>Second</option>
+				<option value='third'>Third</option>
+				<option value='fourth'>Fourth</option>
+				<option value='fifth'>Fifth</option>
+				<option value='sixth'>Sixth</option>
+			</select>
+		</p>
+		<p>
+		<span>Width&nbsp;:&nbsp;</span><input type='number' id='width' min='100' max='1000' step='25' value='400'/>
+		<span>Height&nbsp;:&nbsp;</span><input type='number' id='height' min='100' max='1000' step='25' value='400'/>
+		</p>
+		<p><input type='button' id='redraw' value='REDRAW FRACTAL'/></p>
+	</article>
+
+</body>
+<script>
+window.addEventListener('load',__init__Mandelbrot,false);
+
+function __init__Mandelbrot(){
+
+	Fractal=new Mandelbrot(400,400);
+	Fractal.setCoordinates();
+	Fractal.setupEvents();
+	Fractal.drawMandelbrot();
+
+}
+function Mandelbrot(w,h){
+	
+	this.Canvas=document.getElementById("canvas");
+	this.Context=canvas.getContext("2d");
+
+	this.X_OUTPUT=document.getElementById('coorX');
+	this.Y_OUTPUT=document.getElementById('coorY');
+	this.REDRAW_BUTTON=document.getElementById('redraw');
+	this.MANDELBAR_SELECTED = document.getElementById('mandelbar_selected');
+
+	this.X_OFF=document.getElementById('offX');
+	this.Y_OFF=document.getElementById('offY');
+	this.WIDTH = document.getElementById('width');
+	this.HEIGHT = document.getElementById('height');
+	this.ZOOM_OUT=document.getElementById('zoom');
+
+	this.canvas_width=w;
+	this.canvas_height=h;
+
+	this.x_offset=0;
+	this.y_offset=0;
+	this.x_coor=0;
+	this.y_coor=0;
+	this.x_origin=0;
+	this.y_origin=0;
+
+	this.canvas_x=0;
+	this.canvas_y=0;
+
+	this.radius=2.5;
+	this.x_side=(this.canvas_width-1)/2;
+	this.y_side=(this.canvas_height-1)/2;
+	this.resolution=800;
+	this.zoom=1;
+
+	this.X_OUTPUT.value=this.x_offset;
+	this.Y_OUTPUT.value=this.y_offset;
+	this.ZOOM_OUT.value=this.zoom;
+
+	this.coordinates=new Array();
+
+	this.setCoordinates=setCoordinates;
+	this.setupEvents=setupEvents;
+	this.drawMandelbrot=drawMandelbrot;
+	this.showCoordinates=showCoordinates;
+	this.redrawMandelbrot=redrawMandelbrot;
+	this.selectMandelbar = selectMandelbar;
+
+	this.Mandelbar_To_Draw = 'second';
+
+	function setupEvents(){
+	
+		this.Canvas.addEventListener('click',this.redrawMandelbrot,false);
+		this.REDRAW_BUTTON.addEventListener('click',this.redrawMandelbrot,false);
+		this.Canvas.addEventListener('mousemove',this.showCoordinates,false);
+		this.MANDELBAR_SELECTED.addEventListener('change',this.selectMandelbar,false);
+	}
+	function selectMandelbar(e){
+
+		Fractal.Mandelbar_To_Draw = e.target.value;
+		Fractal.ZOOM_OUT.value = 1;
+		Fractal.X_OUTPUT.value = 0;
+		Fractal.Y_OUTPUT.value = 0;
+		Fractal.redrawMandelbrot(e);
+
+	}
+	function setCoordinates(){
+	
+		var row_temp,x_temp,y_temp;
+
+		if(this.canvas_width%2==0)
+			this.canvas_width++;
+		if(this.canvas_height%2==0)
+			this.canvas_height++;
+
+		this.Canvas.width=this.canvas_width;
+		this.Canvas.height=this.canvas_height;
+
+		for(var y=(this.canvas_height-1)/2;y>=-(this.canvas_height-1)/2;y--){
+			row_temp=[];
+			for(x=-(this.canvas_width-1)/2;x<=(this.canvas_width-1)/2;x++){
+				x_temp=x/(this.x_side/this.radius);
+				y_temp=y/(this.y_side/this.radius);
+				row_temp.push([x_temp,y_temp]);
+			}
+			this.coordinates.push(row_temp);
+		}
+	}
+
+	function drawMandelbrot(){
+		var temp,x,y,a,b,count;
+		this.Context.beginPath();
+		this.Context.lineWidth=1;
+			for(var i=0;i<this.canvas_height;i++){
+				for(var j=0;j<this.canvas_width;j++){
+					x=a=this.coordinates[i][j][0]/this.zoom+this.x_origin;
+					y=b=this.coordinates[i][j][1]/this.zoom+this.y_origin;
+					count=0;
+					while(count<this.resolution&&x*x+y*y<4){
+						temp=x*x-y*y+a;
+						y=2*x*y+b;
+						x=temp;
+						count++;
+					}
+					if(count<1||count==this.resolution)
+						continue;
+					this.Context.moveTo(j,i);
+					this.Context.lineTo(j+1,i+1);
+				}
+			}
+			this.Context.stroke();
+	}
+//============================================================REDRAW MANDELBROT FUNCTION================================================
+	function redrawMandelbrot(e){
+		var mandelbarToDraw;
+		switch(Fractal.Mandelbar_To_Draw){
+			case 'second':
+				mandelbarToDraw = mandelbar2;
+				break;
+			case 'third':
+				mandelbarToDraw = mandelbar3;
+				break;
+			case 'fourth':
+				mandelbarToDraw = mandelbar4;
+				break;
+			case 'fifth':
+				mandelbarToDraw = mandelbar5;
+				break;
+			case 'sixth':
+				mandelbarToDraw = mandelbar6;
+				break;
+			default:
+				mandelbarToDraw = mandelbar2;
+		}
+		if(e.target.id == 'canvas'){
+			Fractal.zoom+=parseInt(Fractal.zoom);
+			Fractal.ZOOM_OUT.value=Fractal.zoom;
+			Fractal.x_origin=Fractal.x_coor;
+			Fractal.y_origin=Fractal.y_coor;
+		}
+		else{
+			Fractal.zoom=parseInt(Fractal.ZOOM_OUT.value);
+			Fractal.x_origin=Fractal.x_coor=parseInt(Fractal.X_OUTPUT.value);
+			Fractal.y_origin=Fractal.y_coor=parseInt(Fractal.Y_OUTPUT.value);
+		}
+		Fractal.Context.clearRect(0,0,Fractal.canvas_width,Fractal.canvas_height);
+		Fractal.Context.beginPath();
+		Fractal.Context.lineWidth=1;
+
+		mandelbarToDraw();
+		Fractal.Context.stroke();
+	}
+	function mandelbar2(){
+		var temp,x,y,a,b,count,mod;
+		for(var i=0;i<Fractal.canvas_height;i++){
+			for(var j=0;j<Fractal.canvas_width;j++){
+				x=a=Fractal.coordinates[i][j][0]/Fractal.zoom + Fractal.x_coor;
+				y=b=Fractal.coordinates[i][j][1]/Fractal.zoom + Fractal.y_coor;
+				count=0;
+				while(count<Fractal.resolution&&x*x+y*y<4){
+					temp=x*x-y*y+a;
+					y=2*x*y+b;
+					x=temp;
+					count++;
+				}
+				if(count<1||count==Fractal.resolution)
+					continue;
+				Fractal.Context.moveTo(j,i);
+				Fractal.Context.lineTo(j+1,i+1);
+			}
+		}
+	}
+	function mandelbar3(){
+		var temp,x,y,a,b,count,mod;
+		for(var i=0;i<Fractal.canvas_height;i++){
+			for(var j=0;j<Fractal.canvas_width;j++){
+				x=a=Fractal.coordinates[i][j][0]/Fractal.zoom + Fractal.x_coor;
+				y=b=Fractal.coordinates[i][j][1]/Fractal.zoom + Fractal.y_coor;
+				count=0;
+				while(count<Fractal.resolution&&x*x+y*y<4){
+					temp = Math.pow(x,3) - 3*x*Math.pow(y,2) + a;
+					y = 3*Math.pow(x,2)*y - Math.pow(y,3) + b;
+					x = temp;
+					count++;
+				}
+				if(count<1||count==Fractal.resolution)
+					continue;
+				Fractal.Context.moveTo(j,i);
+				Fractal.Context.lineTo(j+1,i+1);
+			}
+		}
+	}
+	function mandelbar4(){
+		var temp,x,y,a,b,count,mod;
+		for(var i=0;i<Fractal.canvas_height;i++){
+			for(var j=0;j<Fractal.canvas_width;j++){
+				x=a=Fractal.coordinates[i][j][0]/Fractal.zoom + Fractal.x_coor;
+				y=b=Fractal.coordinates[i][j][1]/Fractal.zoom + Fractal.y_coor;
+				count=0;
+				while(count<Fractal.resolution&&x*x+y*y<4){
+					temp = Math.pow(x,4) -6*Math.pow(x,2)*Math.pow(y,2) + Math.pow(y,4) + a;
+					y = 4*Math.pow(x,3)*y - 4*x*Math.pow(y,3) + b;
+					x = temp;
+					count++;
+				}
+				if(count<1||count==Fractal.resolution)
+					continue;
+				Fractal.Context.moveTo(j,i);
+				Fractal.Context.lineTo(j+1,i+1);
+			}
+		}
+	}
+	function mandelbar5(){
+		var temp,x,y,a,b,count,mod;
+		for(var i=0;i<Fractal.canvas_height;i++){
+			for(var j=0;j<Fractal.canvas_width;j++){
+				x=a=Fractal.coordinates[i][j][0]/Fractal.zoom + Fractal.x_coor;
+				y=b=Fractal.coordinates[i][j][1]/Fractal.zoom + Fractal.y_coor;
+				count=0;
+				while(count<Fractal.resolution&&x*x+y*y<4){
+					temp = Math.pow(x,5) -10*Math.pow(x,3)*Math.pow(y,2) + 5*x*Math.pow(y,4) + a;
+					y = 5*Math.pow(x,4)*y - 10*Math.pow(x,2)*Math.pow(y,3) + Math.pow(y,5) + b;
+					x = temp;
+					count++;
+				}
+				if(count<1||count==Fractal.resolution)
+					continue;
+				Fractal.Context.moveTo(j,i);
+				Fractal.Context.lineTo(j+1,i+1);
+			}
+		}
+	}
+	function mandelbar6(){
+		var temp,x,y,a,b,count,mod;
+		for(var i=0;i<Fractal.canvas_height;i++){
+			for(var j=0;j<Fractal.canvas_width;j++){
+				x=a=Fractal.coordinates[i][j][0]/Fractal.zoom + Fractal.x_coor;
+				y=b=Fractal.coordinates[i][j][1]/Fractal.zoom + Fractal.y_coor;
+				count=0;
+				while(count<Fractal.resolution&&x*x+y*y<4){
+					temp = Math.pow(x,6) -15*Math.pow(x,4)*Math.pow(y,2) + 15*Math.pow(x,2)*Math.pow(y,4) -Math.pow(y,6) + a;
+					y = 6*Math.pow(x,5)*y - 20*Math.pow(x,3)*Math.pow(y,3) + 6*x*Math.pow(y,5) + b;
+					x = temp;
+					count++;
+				}
+				if(count<1||count==Fractal.resolution)
+					continue;
+				Fractal.Context.moveTo(j,i);
+				Fractal.Context.lineTo(j+1,i+1);
+			}
+		}
+	}
+	function showCoordinates(e){
+		Fractal.canvas_x=(e.pageX-e.target.offsetLeft-document.body.offsetLeft);
+		Fractal.canvas_y=(e.pageY-e.target.offsetTop-document.body.offsetTop);
+		Fractal.x_coor=((Fractal.canvas_x-Fractal.x_side)/(Fractal.x_side/Fractal.radius))/Fractal.zoom + Fractal.x_origin;
+		Fractal.y_coor=((Fractal.y_side-Fractal.canvas_y)/(Fractal.y_side/Fractal.radius))/Fractal.zoom + Fractal.y_origin;
+		Fractal.x_offset=Fractal.x_coor-Fractal.x_origin;
+		Fractal.y_offset=Fractal.y_coor-Fractal.y_origin;
+		Fractal.X_OUTPUT.value=Fractal.x_coor;
+		Fractal.Y_OUTPUT.value=Fractal.y_coor;
+		Fractal.Y_OFF.value=Fractal.y_offset;
+		Fractal.X_OFF.value=Fractal.x_offset;
+	}
+}
+
+</script>
+</html>
